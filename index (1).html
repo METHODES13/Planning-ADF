@@ -1,0 +1,615 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Planning ADF — Accueil</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+:root {
+  --navy: #1a2744; --green: #3ea833; --red: #d93025;
+  --gray: #f4f5f7; --border: #dde1ea; --white: #fff;
+  --shadow: 0 4px 20px rgba(26,39,68,0.12);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'DM Sans', sans-serif; background: var(--gray); color: var(--navy); min-height: 100vh; }
+
+/* ===== LAYOUT ===== */
+.page { display: flex; flex-direction: column; min-height: 100vh; }
+
+/* ===== HEADER ===== */
+.header {
+  background: var(--navy); color: #fff;
+  padding: 0 32px; height: 60px;
+  display: flex; align-items: center; justify-content: space-between;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+.header-logo { display: flex; align-items: center; gap: 12px; }
+.header-logo img { height: 36px; width: 36px; background: #fff; border-radius: 6px; padding: 2px; }
+.header-logo-text { font-size: 18px; font-weight: 700; letter-spacing: 0.3px; }
+.header-logo-sub { font-size: 11px; opacity: 0.6; margin-top: 1px; }
+.header-actions { display: flex; align-items: center; gap: 12px; }
+.btn-admin { background: rgba(255,255,255,0.15); border: 1px solid rgba(255,255,255,0.3); color: #fff; padding: 6px 14px; border-radius: 6px; cursor: pointer; font-size: 12px; font-weight: 600; }
+.btn-admin:hover { background: rgba(255,255,255,0.25); }
+
+/* ===== HERO ===== */
+.hero { text-align: center; padding: 48px 24px 32px; }
+.hero-title { font-size: 28px; font-weight: 700; color: var(--navy); margin-bottom: 8px; }
+.hero-sub { font-size: 14px; color: #6b7a99; }
+
+/* ===== SITES GRID ===== */
+.sites-section { flex: 1; padding: 0 32px 48px; max-width: 1100px; margin: 0 auto; width: 100%; }
+.sites-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; }
+.sites-title { font-size: 15px; font-weight: 600; color: var(--navy); }
+.btn-add-site { background: var(--navy); color: #fff; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; font-size: 12px; font-weight: 600; display: flex; align-items: center; gap: 6px; }
+.btn-add-site:hover { background: #243259; }
+
+.sites-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 16px; }
+.site-card {
+  background: #fff; border: 1px solid var(--border); border-radius: 12px;
+  padding: 24px 20px; cursor: pointer; transition: all 0.2s;
+  display: flex; flex-direction: column; gap: 10px;
+  box-shadow: 0 1px 4px rgba(0,0,0,0.06);
+}
+.site-card:hover { transform: translateY(-2px); box-shadow: var(--shadow); border-color: var(--navy); }
+.site-card.selected { border-color: var(--navy); background: #f0f3fa; }
+.site-icon { width: 48px; height: 48px; background: var(--navy); border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 22px; }
+.site-name { font-size: 15px; font-weight: 700; color: var(--navy); }
+.site-desc { font-size: 11px; color: #8892a4; line-height: 1.4; }
+.site-users { font-size: 10px; color: #aaa; }
+.site-card.add-card { border: 2px dashed #ccd2e0; background: transparent; align-items: center; justify-content: center; color: #8892a4; min-height: 140px; }
+.site-card.add-card:hover { border-color: var(--navy); color: var(--navy); background: #f8f9fa; }
+.site-card.add-card .add-icon { font-size: 28px; margin-bottom: 6px; }
+.site-card.add-card .add-label { font-size: 12px; font-weight: 600; }
+
+/* ===== IDENTIFICATION MODAL ===== */
+.modal-overlay {
+  position: fixed; inset: 0; background: rgba(26,39,68,0.5);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.2s;
+}
+.modal-overlay.open { opacity: 1; pointer-events: all; }
+.modal {
+  background: #fff; border-radius: 16px; padding: 32px;
+  width: 380px; max-width: 95vw;
+  box-shadow: 0 8px 40px rgba(26,39,68,0.2);
+  transform: scale(0.95); transition: transform 0.2s;
+}
+.modal-overlay.open .modal { transform: scale(1); }
+.modal-title { font-size: 17px; font-weight: 700; color: var(--navy); margin-bottom: 6px; }
+.modal-site { font-size: 12px; color: #6b7a99; margin-bottom: 24px; }
+.modal-site strong { color: var(--navy); }
+.form-group { margin-bottom: 14px; }
+.form-label { font-size: 11px; font-weight: 600; color: #6b7a99; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 5px; display: block; }
+.form-input {
+  width: 100%; padding: 10px 12px; border: 1px solid var(--border);
+  border-radius: 8px; font-size: 13px; font-family: 'DM Sans', sans-serif;
+  outline: none; transition: border-color 0.15s;
+}
+.form-input:focus { border-color: var(--navy); }
+.btn-primary {
+  width: 100%; background: var(--navy); color: #fff; border: none;
+  padding: 12px; border-radius: 8px; font-size: 14px; font-weight: 600;
+  cursor: pointer; margin-top: 8px; transition: background 0.15s;
+}
+.btn-primary:hover { background: #243259; }
+.btn-ghost { background: none; border: none; color: #6b7a99; cursor: pointer; font-size: 12px; padding: 8px; margin-top: 4px; width: 100%; text-align: center; }
+.btn-ghost:hover { color: var(--navy); }
+
+/* Pending approval screen */
+.pending-screen { text-align: center; padding: 16px 0; }
+.pending-icon { font-size: 48px; margin-bottom: 12px; }
+.pending-title { font-size: 16px; font-weight: 700; color: var(--navy); margin-bottom: 8px; }
+.pending-sub { font-size: 13px; color: #6b7a99; line-height: 1.5; }
+
+/* ===== ADMIN PANEL ===== */
+.admin-overlay {
+  position: fixed; inset: 0; background: rgba(26,39,68,0.5);
+  display: flex; align-items: flex-start; justify-content: flex-end;
+  z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.2s;
+}
+.admin-overlay.open { opacity: 1; pointer-events: all; }
+.admin-panel {
+  background: #fff; width: 480px; max-width: 95vw; height: 100vh;
+  overflow-y: auto; box-shadow: -4px 0 20px rgba(0,0,0,0.15);
+  transform: translateX(100%); transition: transform 0.25s;
+}
+.admin-overlay.open .admin-panel { transform: translateX(0); }
+.admin-header {
+  background: var(--navy); color: #fff; padding: 20px 24px;
+  display: flex; align-items: center; justify-content: space-between;
+  position: sticky; top: 0; z-index: 1;
+}
+.admin-header-title { font-size: 16px; font-weight: 700; }
+.admin-close { background: none; border: none; color: #fff; font-size: 22px; cursor: pointer; opacity: 0.7; }
+.admin-close:hover { opacity: 1; }
+.admin-body { padding: 20px 24px; }
+.admin-section { margin-bottom: 28px; }
+.admin-section-title { font-size: 13px; font-weight: 700; color: var(--navy); text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+
+/* Admin: add site form */
+.admin-form { display: flex; flex-direction: column; gap: 8px; margin-bottom: 16px; }
+.admin-form-row { display: flex; gap: 8px; }
+.admin-form-row .form-input { flex: 1; }
+.btn-sm { padding: 8px 14px; border-radius: 6px; font-size: 12px; font-weight: 600; cursor: pointer; border: none; }
+.btn-sm-primary { background: var(--navy); color: #fff; }
+.btn-sm-danger { background: var(--red); color: #fff; }
+.btn-sm-success { background: var(--green); color: #fff; }
+.btn-sm-ghost { background: #f1f3f4; color: var(--navy); border: 1px solid var(--border); }
+
+/* Sites list in admin */
+.admin-site-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
+  margin-bottom: 6px; background: #fafafa;
+}
+.admin-site-icon { font-size: 18px; }
+.admin-site-info { flex: 1; }
+.admin-site-name { font-weight: 600; font-size: 13px; }
+.admin-site-id { font-size: 10px; color: #aaa; font-family: monospace; }
+.admin-site-actions { display: flex; gap: 4px; }
+
+/* Users list in admin */
+.admin-user-item {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; border: 1px solid var(--border); border-radius: 8px;
+  margin-bottom: 6px;
+}
+.admin-user-avatar { width: 32px; height: 32px; background: var(--navy); border-radius: 50%; display: flex; align-items: center; justify-content: center; color: #fff; font-size: 13px; font-weight: 700; flex-shrink: 0; }
+.admin-user-info { flex: 1; }
+.admin-user-name { font-weight: 600; font-size: 13px; }
+.admin-user-meta { font-size: 10px; color: #aaa; }
+.admin-user-site { font-size: 10px; background: #e8f0fe; color: #1a73e8; padding: 1px 6px; border-radius: 3px; font-weight: 600; }
+.status-badge { font-size: 10px; padding: 2px 8px; border-radius: 10px; font-weight: 600; }
+.status-pending { background: #fff3e0; color: #e65100; }
+.status-approved { background: #e6f4ea; color: #2e7d32; }
+.status-admin { background: #e8f0fe; color: #1a2744; }
+
+/* Toast */
+.toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--navy); color: #fff; padding: 10px 20px; border-radius: 8px; font-size: 13px; font-weight: 600; z-index: 2000; opacity: 0; transition: opacity 0.3s; pointer-events: none; white-space: nowrap; }
+.toast.show { opacity: 1; }
+
+/* Admin password prompt */
+.admin-pwd-row { display: flex; gap: 8px; margin-bottom: 16px; }
+
+/* No sites */
+.no-sites { text-align: center; padding: 40px; color: #aaa; font-size: 13px; }
+</style>
+</head>
+<body>
+<div class="page">
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="header-logo">
+      <div style="width:36px;height:36px;background:#fff;border-radius:6px;display:flex;align-items:center;justify-content:center;">
+        <span style="font-size:18px;">🏭</span>
+      </div>
+      <div>
+        <div class="header-logo-text">Planning ADF</div>
+        <div class="header-logo-sub">Groupe ADF — Gestion des interventions</div>
+      </div>
+    </div>
+    <div class="header-actions">
+      <button class="btn-admin" onclick="openAdminLogin()">⚙ Administration</button>
+    </div>
+  </header>
+
+  <!-- HERO -->
+  <div class="hero">
+    <div class="hero-title">Sélectionnez votre site</div>
+    <div class="hero-sub">Choisissez le site ou contrat pour accéder au planning correspondant</div>
+  </div>
+
+  <!-- SITES -->
+  <div class="sites-section">
+    <div class="sites-header">
+      <div class="sites-title" id="sitesCount">Chargement des sites…</div>
+    </div>
+    <div class="sites-grid" id="sitesGrid">
+      <div class="no-sites">&#9203; Chargement…</div>
+    </div>
+  </div>
+
+</div><!-- end .page -->
+
+<!-- IDENTIFICATION MODAL -->
+<div class="modal-overlay" id="identModal">
+  <div class="modal">
+    <div id="identContent"></div>
+  </div>
+</div>
+
+<!-- ADMIN LOGIN MODAL -->
+<div class="modal-overlay" id="adminLoginModal">
+  <div class="modal">
+    <div class="modal-title">🔐 Administration</div>
+    <div class="modal-site">Accès réservé aux administrateurs</div>
+    <div class="form-group">
+      <label class="form-label">Mot de passe admin</label>
+      <input type="password" class="form-input" id="adminPwdInput" placeholder="••••••••" onkeydown="if(event.key==='Enter') checkAdminPwd()">
+    </div>
+    <button class="btn-primary" onclick="checkAdminPwd()">Accéder</button>
+    <button class="btn-ghost" onclick="closeAdminLogin()">Annuler</button>
+  </div>
+</div>
+
+<!-- ADMIN PANEL -->
+<div class="admin-overlay" id="adminOverlay">
+  <div class="admin-panel">
+    <div class="admin-header">
+      <div class="admin-header-title">⚙ Administration</div>
+      <button class="admin-close" onclick="closeAdmin()">✕</button>
+    </div>
+    <div class="admin-body">
+
+      <!-- Section : Sites -->
+      <div class="admin-section">
+        <div class="admin-section-title">Sites / Contrats</div>
+        <div class="admin-form">
+          <div class="admin-form-row">
+            <input class="form-input" id="newSiteName" placeholder="Nom du site (ex: Vitrolles)">
+            <input class="form-input" id="newSiteIcon" placeholder="Emoji (ex: 🏭)" style="max-width:70px;">
+          </div>
+          <input class="form-input" id="newSiteDesc" placeholder="Description (optionnel)">
+          <button class="btn-sm btn-sm-primary" onclick="addSite()">+ Ajouter le site</button>
+        </div>
+        <div id="adminSitesList"><div class="no-sites">Chargement…</div></div>
+      </div>
+
+      <!-- Section : Utilisateurs en attente -->
+      <div class="admin-section">
+        <div class="admin-section-title">Demandes d'accès en attente</div>
+        <div id="adminPendingList"><div class="no-sites">Aucune demande</div></div>
+      </div>
+
+      <!-- Section : Utilisateurs approuvés -->
+      <div class="admin-section">
+        <div class="admin-section-title">Utilisateurs approuvés</div>
+        <div id="adminUsersList"><div class="no-sites">Aucun utilisateur</div></div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL = 'https://sqmxsujmjodhmbqeubef.supabase.co';
+const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNxbXhzdWptam9kaG1icWV1YmVmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODExNzQwNDYsImV4cCI6MjA5Njc1MDA0Nn0.Irx9K8gxreSFWcDvH8Z7TZHWDGvIVOZWemiistvlmMw';
+const ADMIN_PASSWORD = 'adf2026admin'; // À changer en production
+const PLANNING_PAGE  = 'planning_adf.html'; // Nom du fichier planning
+
+let sb = null;
+let sites = [];
+let selectedSite = null;
+let allUsers = [];
+
+// ===== INIT =====
+async function init() {
+  const supabaseLib = window.supabase || (window.supabase = supabase);
+  sb = supabaseLib.createClient(SUPABASE_URL, SUPABASE_KEY);
+  await ensureTables();
+  await loadSites();
+}
+
+// Créer les tables si elles n'existent pas (via upsert sur settings)
+async function ensureTables() {
+  // On ne peut pas créer des tables via l'API REST - elles doivent être créées dans Supabase
+  // On vérifie juste la connexion
+  try {
+    await sb.from('sites').select('id').limit(1);
+  } catch(e) {
+    console.warn('Table sites manquante - voir SQL de déploiement');
+  }
+}
+
+// ===== SITES =====
+async function loadSites() {
+  try {
+    const { data, error } = await sb.from('sites').select('*').order('created_at');
+    if (error) throw error;
+    sites = data || [];
+    renderSites();
+  } catch(e) {
+    console.error('loadSites:', e);
+    document.getElementById('sitesGrid').innerHTML = '<div class="no-sites">⚠ Impossible de charger les sites. Vérifiez la connexion Supabase.</div>';
+  }
+}
+
+function renderSites() {
+  const grid = document.getElementById('sitesGrid');
+  const count = document.getElementById('sitesCount');
+  count.textContent = sites.length + ' site' + (sites.length > 1 ? 's' : '') + ' disponible' + (sites.length > 1 ? 's' : '');
+
+  if (!sites.length) {
+    grid.innerHTML = '<div class="no-sites">Aucun site configuré. Connectez-vous en administration pour en ajouter.</div>';
+    return;
+  }
+
+  grid.innerHTML = sites.map(site => `
+    <div class="site-card" onclick="selectSite('${site.id}')">
+      <div class="site-icon">${site.icon || '🏭'}</div>
+      <div class="site-name">${escHtml(site.name)}</div>
+      <div class="site-desc">${escHtml(site.description || '')}</div>
+      <div class="site-users">Cliquez pour accéder</div>
+    </div>
+  `).join('');
+}
+
+// ===== IDENTIFICATION =====
+function selectSite(siteId) {
+  selectedSite = sites.find(s => s.id === siteId);
+  if (!selectedSite) return;
+
+  // Vérifier si l'utilisateur a déjà un accès approuvé pour ce site (localStorage)
+  const savedUser = getSavedUser(siteId);
+  if (savedUser && savedUser.status === 'approved') {
+    openPlanning(siteId, savedUser);
+    return;
+  }
+
+  showIdentModal();
+}
+
+function getSavedUser(siteId) {
+  try {
+    const raw = localStorage.getItem('adf_user_' + siteId);
+    return raw ? JSON.parse(raw) : null;
+  } catch(e) { return null; }
+}
+
+function showIdentModal() {
+  const site = selectedSite;
+  document.getElementById('identContent').innerHTML = `
+    <div class="modal-title">🔐 Identification</div>
+    <div class="modal-site">Site : <strong>${escHtml(site.name)}</strong></div>
+    <div class="form-group">
+      <label class="form-label">Prénom</label>
+      <input class="form-input" id="identFirst" placeholder="ex. Nicolas" autocomplete="given-name">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Nom</label>
+      <input class="form-input" id="identLast" placeholder="ex. MARTIN" autocomplete="family-name">
+    </div>
+    <button class="btn-primary" onclick="submitIdent()">Accéder au planning</button>
+    <button class="btn-ghost" onclick="closeIdentModal()">Annuler</button>
+  `;
+  document.getElementById('identModal').classList.add('open');
+  setTimeout(() => document.getElementById('identFirst').focus(), 100);
+}
+
+async function submitIdent() {
+  const first = (document.getElementById('identFirst').value || '').trim();
+  const last  = (document.getElementById('identLast').value  || '').trim();
+  if (!first || !last) { showToast('Veuillez saisir prénom et nom', 'error'); return; }
+
+  const siteId = selectedSite.id;
+  const userId = (first + '_' + last).toLowerCase().replace(/\s+/g, '_');
+
+  // Vérifier si cet utilisateur existe déjà dans users_access
+  const { data: existing } = await sb.from('users_access')
+    .select('*')
+    .eq('site_id', siteId)
+    .eq('user_id', userId)
+    .single();
+
+  if (existing) {
+    if (existing.status === 'approved' || existing.status === 'admin') {
+      // Accès approuvé → ouvrir le planning
+      localStorage.setItem('adf_user_' + siteId, JSON.stringify({ ...existing, firstName: first, lastName: last }));
+      closeIdentModal();
+      openPlanning(siteId, existing);
+    } else if (existing.status === 'pending') {
+      showPendingScreen(first);
+    } else {
+      showToast('Accès refusé pour ce site', 'error');
+    }
+    return;
+  }
+
+  // Nouvel utilisateur → créer une demande en attente
+  const { error } = await sb.from('users_access').insert({
+    site_id: siteId,
+    user_id: userId,
+    first_name: first,
+    last_name: last,
+    status: 'pending',
+    created_at: new Date().toISOString()
+  });
+
+  if (error) {
+    // Si conflit (déjà existant), recharger
+    const { data: retry } = await sb.from('users_access').select('*').eq('site_id', siteId).eq('user_id', userId).single();
+    if (retry && (retry.status === 'approved' || retry.status === 'admin')) {
+      localStorage.setItem('adf_user_' + siteId, JSON.stringify({ ...retry, firstName: first, lastName: last }));
+      closeIdentModal(); openPlanning(siteId, retry); return;
+    }
+    showPendingScreen(first);
+    return;
+  }
+
+  showPendingScreen(first);
+}
+
+function showPendingScreen(firstName) {
+  document.getElementById('identContent').innerHTML = `
+    <div class="pending-screen">
+      <div class="pending-icon">⏳</div>
+      <div class="pending-title">Demande envoyée</div>
+      <div class="pending-sub">
+        Bonjour <strong>${escHtml(firstName)}</strong>, votre demande d'accès au site <strong>${escHtml(selectedSite.name)}</strong> a été transmise.<br><br>
+        Un administrateur doit valider votre accès. Réessayez dans quelques instants.
+      </div>
+    </div>
+    <button class="btn-primary" style="margin-top:20px;" onclick="submitIdent()">🔄 Vérifier mon accès</button>
+    <button class="btn-ghost" onclick="closeIdentModal()">Fermer</button>
+  `;
+}
+
+function closeIdentModal() {
+  document.getElementById('identModal').classList.remove('open');
+  selectedSite = null;
+}
+
+function openPlanning(siteId, userObj) {
+  // Passer site_id et user via sessionStorage
+  sessionStorage.setItem('adf_site_id',   siteId);
+  sessionStorage.setItem('adf_site_name', selectedSite ? selectedSite.name : siteId);
+  sessionStorage.setItem('adf_user',      JSON.stringify(userObj));
+  window.location.href = PLANNING_PAGE + '?site=' + encodeURIComponent(siteId);
+}
+
+// ===== ADMIN =====
+function openAdminLogin() {
+  document.getElementById('adminLoginModal').classList.add('open');
+  setTimeout(() => document.getElementById('adminPwdInput').focus(), 100);
+}
+function closeAdminLogin() {
+  document.getElementById('adminLoginModal').classList.remove('open');
+  document.getElementById('adminPwdInput').value = '';
+}
+function checkAdminPwd() {
+  const pwd = document.getElementById('adminPwdInput').value;
+  if (pwd === ADMIN_PASSWORD) {
+    closeAdminLogin();
+    openAdmin();
+  } else {
+    showToast('Mot de passe incorrect', 'error');
+  }
+}
+
+async function openAdmin() {
+  document.getElementById('adminOverlay').classList.add('open');
+  await loadAdminData();
+}
+function closeAdmin() {
+  document.getElementById('adminOverlay').classList.remove('open');
+}
+
+async function loadAdminData() {
+  renderAdminSites();
+  await loadAllUsers();
+}
+
+function renderAdminSites() {
+  const el = document.getElementById('adminSitesList');
+  if (!sites.length) { el.innerHTML = '<div class="no-sites">Aucun site</div>'; return; }
+  el.innerHTML = sites.map(site => `
+    <div class="admin-site-item">
+      <div class="admin-site-icon">${site.icon || '🏭'}</div>
+      <div class="admin-site-info">
+        <div class="admin-site-name">${escHtml(site.name)}</div>
+        <div class="admin-site-id">ID : ${escHtml(site.id)}</div>
+      </div>
+      <div class="admin-site-actions">
+        <button class="btn-sm btn-sm-danger" onclick="deleteSite('${site.id}')">Supprimer</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+async function addSite() {
+  const name = (document.getElementById('newSiteName').value || '').trim();
+  const icon = (document.getElementById('newSiteIcon').value || '🏭').trim();
+  const desc = (document.getElementById('newSiteDesc').value || '').trim();
+  if (!name) { showToast('Saisissez un nom de site', 'error'); return; }
+
+  const id = name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,'-').replace(/[^a-z0-9-]/g,'');
+  const { error } = await sb.from('sites').insert({ id, name, icon, description: desc, created_at: new Date().toISOString() });
+  if (error) { showToast('Erreur : ' + error.message, 'error'); return; }
+
+  document.getElementById('newSiteName').value = '';
+  document.getElementById('newSiteIcon').value = '';
+  document.getElementById('newSiteDesc').value = '';
+  await loadSites();
+  renderAdminSites();
+  showToast('Site "' + name + '" créé ✓', 'success');
+}
+
+async function deleteSite(siteId) {
+  if (!confirm('Supprimer le site "' + siteId + '" ? Les données du planning ne seront pas supprimées.')) return;
+  await sb.from('sites').delete().eq('id', siteId);
+  await loadSites();
+  renderAdminSites();
+  showToast('Site supprimé', 'success');
+}
+
+async function loadAllUsers() {
+  const { data } = await sb.from('users_access').select('*').order('created_at', { ascending: false });
+  allUsers = data || [];
+  renderPendingUsers();
+  renderApprovedUsers();
+}
+
+function renderPendingUsers() {
+  const el = document.getElementById('adminPendingList');
+  const pending = allUsers.filter(u => u.status === 'pending');
+  if (!pending.length) { el.innerHTML = '<div class="no-sites">Aucune demande en attente</div>'; return; }
+  el.innerHTML = pending.map(u => {
+    const site = sites.find(s => s.id === u.site_id);
+    return `<div class="admin-user-item">
+      <div class="admin-user-avatar">${(u.first_name||'?')[0]}${(u.last_name||'?')[0]}</div>
+      <div class="admin-user-info">
+        <div class="admin-user-name">${escHtml(u.first_name)} ${escHtml(u.last_name)}</div>
+        <div class="admin-user-meta">${site ? escHtml(site.name) : u.site_id} · ${new Date(u.created_at).toLocaleDateString('fr-FR')}</div>
+      </div>
+      <div style="display:flex;gap:4px;">
+        <button class="btn-sm btn-sm-success" onclick="approveUser('${u.id}','approved')">✓ Approuver</button>
+        <button class="btn-sm btn-sm-danger" onclick="approveUser('${u.id}','rejected')">✗ Refuser</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function renderApprovedUsers() {
+  const el = document.getElementById('adminUsersList');
+  const approved = allUsers.filter(u => u.status === 'approved' || u.status === 'admin');
+  if (!approved.length) { el.innerHTML = '<div class="no-sites">Aucun utilisateur approuvé</div>'; return; }
+  el.innerHTML = approved.map(u => {
+    const site = sites.find(s => s.id === u.site_id);
+    return `<div class="admin-user-item">
+      <div class="admin-user-avatar">${(u.first_name||'?')[0]}${(u.last_name||'?')[0]}</div>
+      <div class="admin-user-info">
+        <div class="admin-user-name">${escHtml(u.first_name)} ${escHtml(u.last_name)}
+          <span class="status-badge ${u.status === 'admin' ? 'status-admin' : 'status-approved'}">${u.status}</span>
+        </div>
+        <div class="admin-user-meta">${site ? escHtml(site.name) : u.site_id}</div>
+      </div>
+      <div style="display:flex;gap:4px;">
+        ${u.status !== 'admin' ? '<button class="btn-sm btn-sm-ghost" onclick="approveUser(\'' + u.id + '\',\'admin\')">Admin</button>' : ''}
+        <button class="btn-sm btn-sm-danger" onclick="approveUser('${u.id}','rejected')">Révoquer</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+async function approveUser(userId, status) {
+  await sb.from('users_access').update({ status, updated_at: new Date().toISOString() }).eq('id', userId);
+  await loadAllUsers();
+  const labels = { approved: 'Accès approuvé ✓', rejected: 'Accès révoqué', admin: 'Droits admin accordés ✓' };
+  showToast(labels[status] || 'Mis à jour', 'success');
+}
+
+// ===== UTILS =====
+function escHtml(str) {
+  return String(str||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+let _toastTimer = null;
+function showToast(msg, type) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.style.background = type === 'error' ? '#d32f2f' : '#1a2744';
+  el.classList.add('show');
+  if (_toastTimer) clearTimeout(_toastTimer);
+  _toastTimer = setTimeout(() => el.classList.remove('show'), 3000);
+}
+
+// Démarrer
+init();
+</script>
+</body>
+</html>
